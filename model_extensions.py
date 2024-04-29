@@ -38,7 +38,7 @@ class ElastoPlasticFractureGap:
         characteristic function.
 
         Parameters:
-            fracture_subdomains: List of fracture subdomains.
+            subdomains: List of fracture subdomains.
 
         Returns:
             complementary_eq: Contact mechanics equation for the tangential constraints.
@@ -87,7 +87,12 @@ class ElastoPlasticFractureGap:
         # The time increment of the tangential displacement jump
         # TODO: Make the increment relative to current reference state, which might differ
         # from the current time state.
-        u_t_increment: pp.ad.Operator = pp.ad.time_increment(u_t)
+
+        u_t_temp_increment: pp.ad.Operator = pp.ad.time_increment(u_t)
+        u_t_elastic_increment: pp.ad.Operator = self.elastic_displacement_jump(subdomains)
+        u_t_increment: pp.ad.Operator = u_t_temp_increment - u_t_elastic_increment
+
+
         # - self.elastic_displacement_jump(subdomains)) ??
 
         # Vectors needed to express the governing equations
@@ -97,17 +102,6 @@ class ElastoPlasticFractureGap:
         f_max = pp.ad.Function(pp.ad.maximum, "max_function")
         f_norm = pp.ad.Function(partial(pp.ad.l2_norm, self.nd - 1), "norm_function")
 
-        # With the active set method, the performance of the Newton solver is sensitive
-        # to changes in state between sticking and sliding. To reduce the sensitivity to
-        # round-off errors, we use a tolerance to allow for slight inaccuracies before
-        # switching between the two cases.
-        tol = 1e-5  # FIXME: Revisit this tolerance!
-        # The characteristic function will evaluate to 1 if the argument is less than
-        # the tolerance, and 0 otherwise.
-        f_characteristic = pp.ad.Function(
-            partial(pp.ad.functions.characteristic_function, tol),
-            "characteristic_function_for_zero_normal_traction",
-        )
 
         # The numerical constant is used to loosen the sensitivity in the transition
         # between sticking and sliding.
@@ -145,8 +139,14 @@ class ElastoPlasticFractureGap:
 
         # For the use of @, see previous comment.
         maxbp_abs = scalar_to_tangential @ f_max(b_p, norm_tangential_sum)
-        characteristic: pp.ad.Operator = scalar_to_tangential @ f_characteristic(b_p)
-        characteristic.set_name("characteristic_function_of_b_p")
+    
+        # The characteristic function below reads "1 if (abs(b_p) < tol) else 0".
+        # With the active set method, the performance of the Newton solver is sensitive
+        # to changes in state between sticking and sliding. To reduce the sensitivity to
+        # round-off errors, we use a tolerance to allow for slight inaccuracies before
+        # switching between the two cases. The tolerance is a numerical method parameter
+        # and can be tailored.
+        characteristic = self.contact_mechanics_open_state_characteristic(subdomains)
 
         # Compose the equation itself. The last term handles the case bound=0, in which
         # case t_t = 0 cannot be deduced from the standard version of the complementary

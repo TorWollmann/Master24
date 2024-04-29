@@ -1,3 +1,6 @@
+import numpy as np
+import porepy as pp
+
 class SolidConstants(MaterialConstants):
     """Solid material with unit values.
 
@@ -49,7 +52,7 @@ class SolidConstants(MaterialConstants):
             "thermal_conductivity": 1,
             "thermal_expansion": 0,
             "well_radius": 0.1,
-            "displacement_modulus": 1,
+            "displacement_modulus": 1,  #TorVariable
             "tangential_characteristic_tol": 1e-5,  # Numerical method parameter
             "contact_mechanics_scaling": 1e-1,  # Numerical method parameter
         }
@@ -266,7 +269,7 @@ class SolidConstants(MaterialConstants):
         """
         return self.constants["contact_mechanics_scaling"]
     
-    def displacement_modulus(self) -> number:
+    def displacement_modulus(self) -> number:       #TorVariable
         """Modulus for the elastic tangential fracture displacement.
 
         Returns:
