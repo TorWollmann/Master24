@@ -1,6 +1,12 @@
+from __future__ import annotations
+
+from typing import Optional, Union, overload
+
 import numpy as np
+
 import porepy as pp
 
+number = pp.number
 class SolidConstants(MaterialConstants):
     """Solid material with unit values.
 
