@@ -33,9 +33,9 @@ class SolidConstantsWithTangentialStiffness(pp.SolidConstants):
         # Default values, sorted alphabetically
 
         
-        default_constants = super().default_constants()
-        default_constants.update({"tangential_fracture_stiffness": 1.0})
-        return default_constants
+        constants = super().default_constants
+        constants.update({"tangential_fracture_stiffness": 1.0})
+        return constants
 
     
     def tangential_fracture_stiffness(self) -> number:       #TorVariable

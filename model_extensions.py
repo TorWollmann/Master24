@@ -14,7 +14,7 @@ class ElastoPlasticFractureGap:
 
     def plastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the plastic component of the displacement jump."""
-        total_jump = self.self.displacement_jump(subdomains)
+        total_jump = self.displacement_jump(subdomains)
         elastic_jump = self.elastic_displacement_jump(subdomains)
         return total_jump - elastic_jump
 

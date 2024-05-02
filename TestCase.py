@@ -6,8 +6,8 @@ from porepy.applications.md_grids.model_geometries import (
     SquareDomainOrthogonalFractures,
 )
 from porepy.models.momentum_balance import MomentumBalance
-from Master24.model_extensions import ElastoPlasticFractureGap
-from Master24.constants_extensions import SolidConstantsWithTangentialStiffness
+from model_extensions import ElastoPlasticFractureGap
+from constants_extensions import SolidConstantsWithTangentialStiffness
 
 
 
@@ -136,9 +136,17 @@ MyMomentumBalance,
 ):
     ...
 
-solid_constants = SolidConstantsWithTangentialStiffness
+
+
+
+temp=SolidConstantsWithTangentialStiffness(
+    {
+        "tangential_fracture_stiffness" : 0.01,
+     }
+    )
+solid_constants = temp
 time_manager = pp.TimeManager(
-    schedule=[0, 5],
+    schedule=[0, 20],
     dt_init=1,
     constant_dt=True,
 )
