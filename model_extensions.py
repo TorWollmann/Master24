@@ -11,7 +11,6 @@ class ElastoPlasticFractureGap:
         K_t = self.solid.displacement_modulus()
         u_elastic = t_t / K_t
         return u_elastic
-        u_t_increment=pp.ad.time_increment(u_t)
 
     def plastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the plastic component of the displacement jump."""
@@ -88,12 +87,8 @@ class ElastoPlasticFractureGap:
         # TODO: Make the increment relative to current reference state, which might differ
         # from the current time state.
 
-        u_t_temp_increment: pp.ad.Operator = pp.ad.time_increment(u_t)
-        u_t_elastic_increment: pp.ad.Operator = self.elastic_displacement_jump(subdomains)
-        u_t_increment: pp.ad.Operator = u_t_temp_increment - u_t_elastic_increment
-
-
-        # - self.elastic_displacement_jump(subdomains)) ??
+        # NOTE: This is the increment of PLASTIC deformation jump.
+        u_t_increment: pp.ad.Operator = u_t - u_t.previous_timestep()
 
         # Vectors needed to express the governing equations
         ones_frac = pp.ad.DenseArray(np.ones(num_cells * (self.nd - 1)))
@@ -161,3 +156,33 @@ class ElastoPlasticFractureGap:
     def tangential_fracture_stiffness(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return the tangential component of the fracture stiffness."""
         return pp.ad.Scalar(self.solid.tangential_fracture_stiffness())
+    
+
+    def shear_dilation_gap(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
+        """Shear dilation [m].
+
+        Parameters:
+            subdomains: List of fracture subdomains.
+
+        Returns:
+            Cell-wise shear dilation.
+
+        """
+        angle: pp.ad.Operator = self.dilation_angle(subdomains)
+        f_norm = pp.ad.Function(
+            partial(pp.ad.functions.l2_norm, self.nd - 1), "norm_function"
+        )
+        f_tan = pp.ad.Function(pp.ad.functions.tan, "tan_function")
+        shear_dilation: pp.ad.Operator = f_tan(angle) * f_norm(
+            self.tangential_component(subdomains) @ self.plastic_displacement_jump(subdomains)
+        )
+
+        shear_dilation.set_name("shear_dilation")
+        return shear_dilation
+    
+class MyMomentumBalance(ElastoPlasticFractureGap, pp.momentum_balance.MomentumBalance):
+    ...
+
+
+
+    # script med geometri orthognal fracture og randbetingelser
