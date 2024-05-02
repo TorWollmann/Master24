@@ -8,7 +8,7 @@ class ElastoPlasticFractureGap:
         # TODO: Implement the elastic displacement jump. Is this where the equation:
         # T_t = K_t u_t is implemented?
         t_t = self.contact_traction(subdomains)
-        K_t = self.solid.displacement_modulus()
+        K_t = self.solid.tangential_fracture_stiffness()
         u_elastic = t_t / K_t
         return u_elastic
 
