@@ -7,12 +7,23 @@ class ElastoPlasticFractureGap:
         """Return an operator that represents the elastic component of the displacement jump."""
         # TODO: Implement the elastic displacement jump. Is this where the equation:
         # T_t = K_t u_t is implemented?
+
+        basis: list[pp.ad.SparseArray] = self.basis(
+	    subdomains, dim=self.nd  # type: ignore[call-arg]
+        )
+        tangential_to_nd =  pp.ad.sum_operator_list(
+	        [e_i for e_i in basis[:-1]]
+        )
+        normal_to_nd = basis[-1]
+        normal_to_nd.set_name("n_to_nd")
+        tangential_to_nd.set_name("t_to_nd")
+
         nd_vec_to_tangential = self.tangential_component(subdomains)
         t_t = nd_vec_to_tangential @ self.contact_traction(subdomains)
         K_t = self.solid.tangential_fracture_stiffness()
         u_t = t_t / K_t
-        u_n = self.elastic_normal_fracture_deformation(subdomains)
-        return nd_vec_to_tangential.t(u_t)+nd_vec_to_tangential.t(u_n)
+        #u_n = normal_to_nd @ (self.elastic_normal_fracture_deformation(subdomains))
+        return (tangential_to_nd @ u_t)
 
     def plastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the plastic component of the displacement jump."""
