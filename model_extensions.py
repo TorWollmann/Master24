@@ -22,7 +22,7 @@ class ElastoPlasticFractureGap:
         t_t = nd_vec_to_tangential @ self.contact_traction(subdomains)
         K_t = self.solid.tangential_fracture_stiffness()
         u_t = t_t / K_t
-        #u_n = normal_to_nd @ (self.elastic_normal_fracture_deformation(subdomains))
+        #u_n = self.elastic_normal_fracture_deformation(subdomains)
         return (tangential_to_nd @ u_t)
 
     def plastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
