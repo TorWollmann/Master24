@@ -5,15 +5,10 @@ import porepy as pp
 class ElastoPlasticFractureGap:
     def elastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the elastic component of the displacement jump."""
-        # TODO: Implement the elastic displacement jump. Is this where the equation:
-        # T_t = K_t u_t is implemented?
-
         basis: list[pp.ad.SparseArray] = self.basis(
-	    subdomains, dim=self.nd  # type: ignore[call-arg]
+	        subdomains, dim=self.nd  # type: ignore[call-arg]
         )
-        tangential_to_nd =  pp.ad.sum_operator_list(
-	        [e_i for e_i in basis[:-1]]
-        )
+        tangential_to_nd =  pp.ad.sum_operator_list(basis[:-1])
         normal_to_nd = basis[-1]
         normal_to_nd.set_name("n_to_nd")
         tangential_to_nd.set_name("t_to_nd")
@@ -22,8 +17,10 @@ class ElastoPlasticFractureGap:
         t_t = nd_vec_to_tangential @ self.contact_traction(subdomains)
         K_t = self.solid.tangential_fracture_stiffness()
         u_t = t_t / K_t
-        #u_n = self.elastic_normal_fracture_deformation(subdomains)
-        return (tangential_to_nd @ u_t)
+        # Hack to broadcast to number of cells in case elastic normal deformation is scalar.
+        nc = sum([sd.num_cells for sd in subdomains])
+        u_n = self.elastic_normal_fracture_deformation(subdomains) * pp.ad.DenseArray(np.ones(nc))
+        return tangential_to_nd @ u_t + normal_to_nd @ u_n
 
     def plastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the plastic component of the displacement jump."""
@@ -147,7 +144,7 @@ class ElastoPlasticFractureGap:
 
         # For the use of @, see previous comment.
         maxbp_abs = scalar_to_tangential @ f_max(b_p, norm_tangential_sum)
-    
+
         # The characteristic function below reads "1 if (abs(b_p) < tol) else 0".
         # With the active set method, the performance of the Newton solver is sensitive
         # to changes in state between sticking and sliding. To reduce the sensitivity to
@@ -169,7 +166,7 @@ class ElastoPlasticFractureGap:
     def tangential_fracture_stiffness(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return the tangential component of the fracture stiffness."""
         return pp.ad.Scalar(self.solid.tangential_fracture_stiffness())
-    
+
 
     def shear_dilation_gap(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Shear dilation [m].
@@ -192,7 +189,7 @@ class ElastoPlasticFractureGap:
 
         shear_dilation.set_name("shear_dilation")
         return shear_dilation
-    
+
 class MyMomentumBalance(ElastoPlasticFractureGap, pp.momentum_balance.MomentumBalance):
     ...
 
