@@ -8,7 +8,10 @@ class ElastoPlasticFractureGap:
         basis: list[pp.ad.SparseArray] = self.basis(
 	        subdomains, dim=self.nd  # type: ignore[call-arg]
         )
-        tangential_to_nd =  pp.ad.sum_operator_list(basis[:-1])
+        local_basis = self.basis(subdomains, dim=self.nd - 1)
+        tangential_to_nd =  pp.ad.sum_operator_list(
+            e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)
+        )
         normal_to_nd = basis[-1]
         normal_to_nd.set_name("n_to_nd")
         tangential_to_nd.set_name("t_to_nd")
