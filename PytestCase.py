@@ -47,24 +47,30 @@ class Test2DGeometry:
 
 
 class LinearModel(
-    Test2DGeometry,
+    SquareDomainOrthogonalFractures,
     pp.model_boundary_conditions.BoundaryConditionsMechanicsDirNorthSouth,
     MyMomentumBalance,
 ):
+
+    def meshing_arguments(self) -> dict:
+        mesh_args: dict[str, float] = {"cell_size": 0.25}
+        return mesh_args 
+
+  
     pass
 
 
 
 
 @pytest.mark.parametrize(
-    "north_displacement_x, north_displacement_y",
+    "north_displacement","u_e_expected","u_p_expected",
     [
-        (1.0,-1.0,"north_displacement_x",0.0),
-        (1.0,1.0,"north_displacement_x","north_displacement_y"),
+        ([1.0,-1.0],[1,0], [0,0]),
+        ([1.0,1.0],[0,0],  [1,1]),
     ],
 )
 
-def test_2d_single_fracture(north_displacement_x, north_displacement_y,u_e_expected,u_p_expected):
+def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected):
     """Test that the solution is qualitatively sound.
 
     Parameters:
@@ -76,16 +82,17 @@ def test_2d_single_fracture(north_displacement_x, north_displacement_y,u_e_expec
 
     """
     # Instantiate constants and store in params.
-    solid_vals = {  "tangential_fracture_stiffness":0.01,
-                    "shear_modulus": 10000,
-                    "lame_lambda": 10000,
+    solid_vals = {  "tangential_fracture_stiffness":1e-5,
+                    "shear_modulus": 1e6,
+                    "lame_lambda": 1e6,
                     }
     solid = SolidConstantsWithTangentialStiffness(solid_vals)
     params = {
         "times_to_export": [],  # Suppress output for tests
         "material_constants": {"solid": solid},
-        "uy_north": north_displacement_y,
-        "ux_north": north_displacement_x,
+        "ux_north": north_displacement[0],
+        "uy_north": north_displacement[1],
+        "fracture_indices":[1],
     }
 
     # Create model and run simulation
@@ -96,45 +103,51 @@ def test_2d_single_fracture(north_displacement_x, north_displacement_y,u_e_expec
 
     sd = setup.mdg.subdomains(dim=setup.nd)
     sd_frac = setup.mdg.subdomains(dim=setup.nd - 1)
-    
-    #var = setup.equation_system.get_variables([setup.displacement_jump,setup.elastic_displacement_jump,setup.plastic_displacement_jump,], [sd])
-    #vals = setup.equation_system.get_variable_values(variables=var, time_step_index=0)
+    rot = setup.local_coordinates(sd_frac).transpose()
+    u_p=(rot @ setup.plastic_displacement_jump(sd_frac)).value(setup.equation_system)
 
-    u_p=setup.plastic_displacement_jump(sd_frac).value(setup.equation_system)
+    u_e=(rot @ setup.elastic_displacement_jump(sd_frac)).value(setup.equation_system)
 
-    u_e=setup.elastic_displacement_jump(sd_frac).value(setup.equation_system)
+    u_domain=setup.displacement(sd).value(setup.equation_system)
 
-#    temp=setup.u
-#    temp1=temp.tangential_component(sd)
-#    jump = setup.u(sd).value(setup.equation_system)
 
-    #var = setup.equation_system.get_variables([setup.u], [sd])
-    #vals = setup.equation_system.get_variable_values(variables="u", time_step_index=0)
-    #test=setup.mdg.subdomains(return_data=True)[0]
-    #test1=test[pp.TIME_STEP_SOLUTIONS].keys()
-    
-    
-    #subdomain_states = []
-    #for sd, data in setup.mdg.subdomains(return_data=True):
-    #    subdomain_states += data[pp.TIME_STEP_SOLUTIONS].values()
-    
-    #tor1=subdomain_states[0]
-    #tor2=tor1.tangential_component(sd)
 
-    #fetcher = pp.get_solution_values(name='u',data=setup.mdg.subdomains(return_data=True), time_step_index=0)
-
-    u_real=setup.displacement(sd).value(setup.equation_system)
 
 
     print(f"u_e={u_e}")
-    print(f"vals={u_real[::2]}")
+    print(f"u_e_x={u_e[::2]}")
+    print(f"u_e_y={u_e[1::2]}")
+
+
+    print(f"plastic={u_p}")
+    print(f"plastic_x={u_p[::2]}")
+    print(f"plastic_y={u_p[1::2]}")
+
     tol=1e-10
     
-    temptest=u_real.reshape(2, -1, order='F')[0]
+    u_x=u_domain[::2][sd.cell_centers[:,1]>0.5]
 
-    assert np.allclose(u_e,temptest)
+
+    print(f"u_x{u_x}")
+
+    assert np.allclose(u_e[::2],u_e_expected[0], atol=1e-2)
+
+    assert np.allclose(u_e[1::2],u_e_expected[1], atol=1e-2)
+
+
+
+    assert np.allclose(u_p[::2],u_p_expected[0])
+
+    assert np.allclose(u_p[1::2],u_p_expected[1])
+
+
+
 
     #assert np.allclose(u_p,u_p_expected)
 
 
-test_2d_single_fracture(1.0,-1.0,"north_displacement_x",0.0)
+#test_2d_single_fracture([1.0,-1.0],[1,0], [0,0])
+
+
+
+#test_2d_single_fracture([1.0,1.0],[0,0],  [1,1])
