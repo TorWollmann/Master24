@@ -5,22 +5,18 @@ import porepy as pp
 class ElastoPlasticFractureGap:
     def elastic_displacement_jump(self, subdomains: list[pp.Grid]) -> pp.ad.Operator:
         """Return an operator that represents the elastic component of the displacement jump."""
-        basis: list[pp.ad.SparseArray] = self.basis(
-	        subdomains, dim=self.nd  # type: ignore[call-arg]
-        )
+        basis= self.basis(subdomains, dim=self.nd)  # type: ignore[call-arg]
         local_basis = self.basis(subdomains, dim=self.nd - 1)
         tangential_to_nd =  pp.ad.sum_operator_list(
             e_nd @ e_f.T for e_nd, e_f in zip(basis[:-1], local_basis)
         )
         normal_to_nd = basis[-1]
-        normal_to_nd.set_name("n_to_nd")
-        tangential_to_nd.set_name("t_to_nd")
 
         nd_vec_to_tangential = self.tangential_component(subdomains)
         t_t = nd_vec_to_tangential @ self.contact_traction(subdomains)
         K_t = self.solid.tangential_fracture_stiffness()
         u_t = t_t / K_t
-        # Hack to broadcast to number of cells in case elastic normal deformation is scalar.
+        # Broadcast to number of cells in case elastic normal deformation is scalar.
         nc = sum([sd.num_cells for sd in subdomains])
         u_n = self.elastic_normal_fracture_deformation(subdomains) * pp.ad.DenseArray(np.ones(nc))
         return tangential_to_nd @ u_t + normal_to_nd @ u_n
