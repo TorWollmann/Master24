@@ -51,7 +51,7 @@ class LinearModel(
     pp.model_boundary_conditions.BoundaryConditionsMechanicsDirNorthSouth,
     MyMomentumBalance,
 ):
- 
+
     pass
 
 
@@ -77,9 +77,9 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,):
 
     """
     # Instantiate constants and store in params.
-    solid_vals = {  "tangential_fracture_stiffness":1e-5,
+    solid_vals = {  "tangential_fracture_stiffness": 1e-5,
                     "shear_modulus": 1e6,
-                    "lame_lambda": 1e6,
+                    "lame_lambda": 1e3,
                     }
     solid = SolidConstantsWithTangentialStiffness(solid_vals)
     params = {
@@ -104,7 +104,7 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,):
     #rot = setup.local_coordinates(sd_frac).transpose()
     #Rotasjonen virker ikke
     #lagt på hyllen intil videre
-    
+
     u_p=setup.plastic_displacement_jump(sd_frac).value(setup.equation_system)
 
     u_e=setup.elastic_displacement_jump(sd_frac).value(setup.equation_system)
