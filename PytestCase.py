@@ -58,14 +58,14 @@ class LinearModel(
 
 
 @pytest.mark.parametrize(
-    "north_displacement","u_e_expected","u_p_expected","",
+    "north_displacement","u_e_expected","u_p_expected","u_x_expected",
     [
-        ([1.0,-1.0],[-1,0], [0,0]),
-        ([1.0,1.0],[0,0],  [-1,1]),
+        ([1.0,-1.0],[-1,0], [0,0], [1]),
+        ([1.0,1.0],[0,0],  [-1,1], [1]),
     ],
 )
 
-def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,):
+def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,u_x_expected):
     """Test that the solution is qualitatively sound.
 
     Parameters:
@@ -74,6 +74,7 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,):
             directions.
         u_p_expected (list): Expected values of the plastic displacement jump in the x and y.
             directions.
+        u_x_expected (list): Expected value of displacement in the x direction of cells above the fracture.
 
     """
     # Instantiate constants and store in params.
@@ -127,24 +128,33 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,):
     tol=1e-10
 
     #Extracting values for the cells above the fracture
+    #For the parameters of this test (stiff domain, elastic transverse fracture) these should
+    #match the displacement on the top boundary.
     u_x=u_domain[::2][tempsd.cell_centers[1,:]>0.5]
     u_y=u_domain[1::2][tempsd.cell_centers[1,:]>0.5]
 
     print(f"u_x{u_x}")
     print(f"u_y{u_y}")
 
-
+    #When looking at the elastic displacement it is important to note that the sign of the 
+    #value is dependent on local coordinates, that are set during grid construction. 
+    #For this specific grid we except a value of -1,even if physically it should be 1.
     assert np.allclose(u_e[::2],u_e_expected[0])
     assert np.allclose(u_e[1::2],u_e_expected[1])
 
 
+    #Again, because of the local coordinates (that depend on the grid construction)
+    #here we will expect a -1, instead of 1.
     assert np.allclose(u_p[::2],u_p_expected[0])
     assert np.allclose(u_p[1::2],u_p_expected[1])
 
 
-
-test_2d_single_fracture([1.0,-1.0],[-1,0], [0,0])
-
+    assert np.allclose(u_x,u_x_expected[0], atol=1e-2)
 
 
-test_2d_single_fracture([1.0,1.0],[0,0],  [-1,1])
+
+test_2d_single_fracture([1.0,-1.0],[-1,0], [0,0], [1])
+
+
+
+test_2d_single_fracture([1.0,1.0],[0,0],  [-1,1],[1])
