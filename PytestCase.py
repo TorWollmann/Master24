@@ -58,7 +58,7 @@ class LinearModel(
 
 
 @pytest.mark.parametrize(
-    "north_displacement","u_e_expected","u_p_expected","u_x_expected",
+    "north_displacement,u_e_expected,u_p_expected,u_x_expected",
     [
         ([1.0,-1.0],[-1,0], [0,0], [1]),
         ([1.0,1.0],[0,0],  [-1,1], [1]),
@@ -153,8 +153,8 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,u_x_exp
 
 
 
-test_2d_single_fracture([1.0,-1.0],[-1,0], [0,0], [1])
+#test_2d_single_fracture([1.0,-1.0],[-1,0], [0,0], [1])
 
 
 
-test_2d_single_fracture([1.0,1.0],[0,0],  [-1,1],[1])
+#test_2d_single_fracture([1.0,1.0],[0,0],  [-1,1],[1])
