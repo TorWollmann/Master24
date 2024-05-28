@@ -30,7 +30,7 @@ class DisplacementJumpExporting:
             vals3 = self._evaluate_and_scale(sd, "elastic_displacement_jump", "m")
             data.append((sd, "displacement_jump", vals))
             data.append((sd, "plastic_displacement_jump", vals2))            
-            data.append((sd, "elastic_displacement_jump", vals3))            
+            data.append((sd, "elastic_displacement_jump", vals3))           
         return data
 
 
@@ -60,7 +60,7 @@ class Tor3DGeometry:
 
 class Tor2DGeometry:
     def set_fractures(self) -> None:
-        f_1 = pp.LineFracture(np.array([[1, 1], [1, 2]]))
+        f_1 = pp.LineFracture(np.array([[1, 2], [1, 1]]))
         self._fractures = [f_1]
 
     def set_domain(self) -> None:
@@ -69,6 +69,25 @@ class Tor2DGeometry:
             "xmax": 3,
             "ymin": 0,
             "ymax": 3,
+        }
+        self._domain = pp.Domain(bounding_box=bounding_box)
+
+    def grid_type(self) -> str:
+        return self.params.get("grid_type", "simplex")
+    
+
+
+class Test2DGeometry:
+    def set_fractures(self) -> None:
+        f_1 = pp.LineFracture(np.array([[0, 2], [1, 1]]))
+        self._fractures = [f_1]
+
+    def set_domain(self) -> None:
+        bounding_box = {
+            "xmin": 0,
+            "xmax": 2,
+            "ymin": 0,
+            "ymax": 2,
         }
         self._domain = pp.Domain(bounding_box=bounding_box)
 
@@ -85,7 +104,7 @@ class TestCaseBC2D():
 
         # Set the type of west and east boundaries to Dirichlet. North and south are
         # Neumann by default.
-        bc = pp.BoundaryConditionVectorial(sd, bounds.west+bounds.east, "dir")
+        bc = pp.BoundaryConditionVectorial(sd, bounds.south+bounds.north, "dir")
         bc.internal_to_dirichlet(sd)
         return bc
 
@@ -100,10 +119,10 @@ class TestCaseBC2D():
         bounds = self.domain_boundary_sides(bg)
 
         # Assigning x-component values
-        values[0][bounds.south + bounds.north] *= self.solid.convert_units(1, "Pa")
+        values[0][bounds.west + bounds.east] *= self.solid.convert_units(0, "Pa")
 
         # Assigning y-component values
-        values[1][bounds.south + bounds.north] *= self.solid.convert_units(1, "Pa")
+        values[1][bounds.west + bounds.east] *= self.solid.convert_units(0, "Pa")
 
         return values.ravel("F")
 
@@ -121,8 +140,9 @@ class TestCaseBC2D():
         bounds = self.domain_boundary_sides(bg)
 
         # Assign a time dependent value to the x-component of the western boundary
-        values[0][bounds.east] += self.solid.convert_units(-1.0 * t, "m")
-        
+        values[0][bounds.north] += self.solid.convert_units(1.0e-1 * t, "m")
+        values[1][bounds.north] += self.solid.convert_units(-1.0e-1 * t, "m")
+
 
 
         # The convention for flattening nd-arrays of vector values in PorePy is by using
@@ -155,10 +175,12 @@ class TestCaseBC3D():
         bounds = self.domain_boundary_sides(bg)
 
         # Assigning x-component values
-        values[0][bounds.east + bounds.west + bounds.north + bounds.south] *= self.solid.convert_units(1, "Pa")
+        values[0][bounds.west + bounds.east + bounds.north + bounds.south] *= self.solid.convert_units(0, "Pa")
 
         # Assigning y-component values
-        values[1][bounds.west + bounds.east + bounds.north + bounds.south] *= self.solid.convert_units(1, "Pa")
+        values[1][bounds.west + bounds.east + bounds.north + bounds.south] *= self.solid.convert_units(0, "Pa")
+
+        values[2][bounds.west + bounds.east + bounds.north + bounds.south] *= self.solid.convert_units(0, "Pa")
 
         return values.ravel("F")
 
@@ -176,7 +198,7 @@ class TestCaseBC3D():
         bounds = self.domain_boundary_sides(bg)
 
         # Assign a time dependent value to the x-component of the western boundary
-        values[0][bounds.top+bounds.bottom] += self.solid.convert_units(10.0 * t, "m")
+        values[2][bounds.top] += self.solid.convert_units(-1.0 * t, "m")
 
         # The convention for flattening nd-arrays of vector values in PorePy is by using
         # the Fortran-style ordering (chosen by string "F" when giving a call to ravel).
@@ -214,12 +236,15 @@ class TestCase3D(
 
 temp=SolidConstantsWithTangentialStiffness(
     {
-        "tangential_fracture_stiffness" : 1.0,
+        "tangential_fracture_stiffness" : 0.01,
+        "friction_coefficient": 1.0e5,
+        "shear_modulus": 1e6,
+        "lame_lambda": 1e6,
      }
     )
 solid_constants = temp
 time_manager = pp.TimeManager(
-    schedule=[0, 20],
+    schedule=[0, 10],
     dt_init=1,
     constant_dt=True,
 )
@@ -228,7 +253,7 @@ params = {
     "material_constants": {"solid": solid_constants},
     "grid_type": "simplex",
     "meshing_arguments": {"cell_size": 0.25},
-    "time_manager": time_manager
+    "time_manager": time_manager,
 }
 
 
@@ -240,7 +265,41 @@ model = [TestCase2D(params),TestCase3D(params)]
 pp.run_time_dependent_model(model[0], params)
 
 
+"""Pytest setup for paraview"""
+
+params1 = {
+    "material_constants": {"solid": solid_constants},
+    "fracture_indices":[1],
+    "time_manager": time_manager
+}
+
+class LinearModel(
+    TestCaseBC2D,
+    SquareDomainOrthogonalFractures,
+    MyMomentumBalance,
+):
+
+    def meshing_arguments(self) -> dict:
+        mesh_args: dict[str, float] = {"cell_size": 0.25}
+        return mesh_args 
+ 
+    pass
+
+
+setup = LinearModel(params1)
+#pp.run_time_dependent_model(setup, params1)
+
+
+
+
+
+
+
+
 timed1 = time.time()
 totaltime = timed1 - timed0
 print(totaltime)
 print("complete")
+
+
+
