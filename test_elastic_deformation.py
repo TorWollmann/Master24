@@ -3,22 +3,13 @@
 # %%
 
 from __future__ import annotations
-
-import copy
-
 import numpy as np
 import pytest
-
 import porepy as pp
-"""from porepy.applications.test_utils.models import (
-    MomentumBalance,
-)"""
-
 from porepy.models.momentum_balance import MomentumBalance
 from model_extensions import ElastoPlasticFractureGap
 from constants_extensions import SolidConstantsWithTangentialStiffness
 from porepy.applications.md_grids.model_geometries import (
-    CubeDomainOrthogonalFractures,
     SquareDomainOrthogonalFractures,
 )
 
@@ -27,24 +18,6 @@ class MyMomentumBalance(
     MomentumBalance,
 ):
     ...
-
-class Test2DGeometry:
-    def set_fractures(self) -> None:
-        f_1 = pp.LineFracture(np.array([[0, 2], [1, 1]]))
-        self._fractures = [f_1]
-
-    def set_domain(self) -> None:
-        bounding_box = {
-            "xmin": 0,
-            "xmax": 2,
-            "ymin": 0,
-            "ymax": 2,
-        }
-        self._domain = pp.Domain(bounding_box=bounding_box)
-
-    def grid_type(self) -> str:
-        return self.params.get("grid_type", "simplex")
-
 
 class LinearModel(
     SquareDomainOrthogonalFractures,
@@ -96,15 +69,14 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,u_x_exp
 
 
     sd = setup.mdg.subdomains(dim=setup.nd)
-    tempsd = setup.mdg.subdomains(dim=setup.nd)[0]
+    sd0 = setup.mdg.subdomains(dim=setup.nd)[0]
     sd_frac = setup.mdg.subdomains(dim=setup.nd - 1)
 
 
 
-    #rot = setup.local_coordinates(sd_frac).transpose()
-    #Rotasjonen virker ikke
-    #lagt på hyllen intil videre
-
+    #The values extracted for displacement and displacement_jump below are stored in this
+    #particular configuration :[u_x0,u_y0,u_x1,u_y1, ...] so we slice them to extract
+    #individual x and y values.
     u_p=setup.plastic_displacement_jump(sd_frac).value(setup.equation_system)
 
     u_e=setup.elastic_displacement_jump(sd_frac).value(setup.equation_system)
@@ -113,27 +85,11 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,u_x_exp
 
 
 
-
-
-    print(f"u_e={u_e}")
-    print(f"u_e_x={u_e[::2]}")
-    print(f"u_e_y={u_e[1::2]}")
-
-
-    print(f"u_p={u_p}")
-    print(f"u_p_x={u_p[::2]}")
-    print(f"u_p_x={u_p[1::2]}")
-
-    tol=1e-10
-
     #Extracting values for the cells above the fracture
     #For the parameters of this test (stiff domain, elastic transverse fracture) these should
     #match the displacement on the top boundary.
-    u_x=u_domain[::2][tempsd.cell_centers[1,:]>0.5]
-    u_y=u_domain[1::2][tempsd.cell_centers[1,:]>0.5]
-
-    print(f"u_x{u_x}")
-    print(f"u_y{u_y}")
+    u_x=u_domain[::2][sd0.cell_centers[1,:]>0.5]
+    u_y=u_domain[1::2][sd0.cell_centers[1,:]>0.5]
 
     #When looking at the elastic displacement it is important to note that the sign of the
     #value is dependent on local coordinates, that are set during grid construction.
@@ -149,11 +105,3 @@ def test_2d_single_fracture(north_displacement,u_e_expected,u_p_expected,u_x_exp
 
 
     assert np.allclose(u_x,u_x_expected[0], atol=1e-2)
-
-
-
-#test_2d_single_fracture([1.0,-1.0],[-1,0], [0,0], [1])
-
-
-
-#test_2d_single_fracture([1.0,1.0],[0,0],  [-1,1],[1])
